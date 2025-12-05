@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
+    />
+    <meta name="theme-color" content="#e0c3fc" />
+    <title>مدیریت اشتراک + SMS</title>
+    <link rel="manifest" href="manifest.json" />
+    <link
+      rel="apple-touch-icon"
+      href="https://cdn-icons-png.flaticon.com/512/2099/2099192.png"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- LOGIN SCREEN -->
+    <div id="login-screen">
+      <div class="login-box">
+        <div
+          style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+          "
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            fill="#000000"
+            viewBox="0 0 24 24"
+            style="width: 64px; height: 64px"
+          >
+            <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+            <g
+              id="SVGRepo_tracerCarrier"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></g>
+            <g id="SVGRepo_iconCarrier">
+              <path
+                d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"
+              ></path>
+            </g>
+          </svg>
+          <h2 style="margin: 0">ورود امن</h2>
+        </div>
+        <p style="font-size: 13px; color: #666">
+          نام کاربری و رمز خود را وارد کنید
+        </p>
+
+        <div class="form-group">
+          <label style="font-size: 12px; color: #666">نام کاربری</label>
+          <input
+            type="text"
+            id="usernameInput"
+            placeholder="نام کاربری"
+            style="text-align: right"
+          />
+        </div>
+
+        <div class="form-group">
+          <label style="font-size: 12px; color: #666">رمز عبور</label>
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="رمز عبور"
+            style="text-align: right"
+          />
+        </div>
+
+        <div
+          id="loginError"
+          style="
+            color: #e74c3c;
+            font-size: 12px;
+            margin-bottom: 10px;
+            display: none;
+          "
+        ></div>
+
+        <button class="btn" onclick="handleLogin()" style="width: 100%">
+          ورود
+        </button>
+
+        <div
+          style="
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+          "
+        >
+          این پنل نیاز به نام کاربری و رمز عبور دارد
+        </div>
+      </div>
+    </div>
+
+    <div class="window hidden" id="app-window">
+      <div class="sidebar">
+        <div class="window-controls">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+        </div>
+
+        <div class="menu-item active" onclick="switchTab('dashboard', this)">
+          <svg
+            class="menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M12 3H16.2C17.8802 3 18.7202 3 19.362 3.32698C19.9265 3.6146 20.3854 4.07354 20.673 4.63803C21 5.27976 21 6.11984 21 7.8V16.2C21 17.8802 21 18.7202 20.673 19.362C20.3854 19.9265 19.9265 20.3854 19.362 20.673C18.7202 21 17.8802 21 16.2 21H7.8C6.11984 21 5.27976 21 4.63803 20.673C4.07354 20.3854 3.6146 19.9265 3.32698 19.362C3 18.7202 3 17.8802 3 16.2V12M8 13V17M16 11V17M12 7V17M2 5L5 2M5 2L8 5M5 2L5 8"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            ></path>
+          </svg>
+          <span>داشبورد</span>
+        </div>
+        <!-- NEW TAB -->
+        <div class="menu-item" onclick="switchTab('renewal', this)">
+          <svg
+            class="menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span>پیگیری تمدید</span>
+          <span class="badge-count empty" id="notifyBadge">0</span>
+        </div>
+
+        <div class="menu-item" onclick="switchTab('settings', this)">
+          <svg
+            class="menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="3"></circle>
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+            ></path>
+          </svg>
+          <span>تنظیمات</span>
+        </div>
+        <div class="menu-item" onclick="switchTab('dateconv', this)">
+          <svg
+            class="menu-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M20 10V7C20 5.89543 19.1046 5 18 5H6C4.89543 5 4 5.89543 4 7V10M20 10V19C20 20.1046 19.1046 21 18 21H6C4.89543 21 4 20.1046 4 19V10M20 10H4M8 3V7M16 3V7"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+            ></path>
+            <rect
+              x="6"
+              y="12"
+              width="3"
+              height="3"
+              rx="0.5"
+              fill="currentColor"
+            ></rect>
+            <rect
+              x="10.5"
+              y="12"
+              width="3"
+              height="3"
+              rx="0.5"
+              fill="currentColor"
+            ></rect>
+            <rect
+              x="15"
+              y="12"
+              width="3"
+              height="3"
+              rx="0.5"
+              fill="currentColor"
+            ></rect>
+          </svg>
+          <span>تبدیل تاریخ</span>
+        </div>
+
+        <!-- Logout Button -->
+        <div
+          class="menu-item"
+          onclick="handleLogout()"
+          style="
+            margin-top: auto;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 10px;
+          "
+        >
+          <svg
+            class="menu-icon"
+            viewBox="0 0 16 16"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g>
+              <path
+                d="M1 8a6 6 0 018.514-5.45.75.75 0 01-.629 1.363 4.5 4.5 0 100 8.175.75.75 0 11.63 1.361A6 6 0 011 8z"
+                fill="currentColor"
+              ></path>
+              <path
+                d="M11.245 4.695a.75.75 0 00-.05 1.06l1.36 1.495H6.75a.75.75 0 000 1.5h5.805l-1.36 1.495a.75.75 0 001.11 1.01l2.5-2.75a.748.748 0 00-.002-1.012l-2.498-2.748a.75.75 0 00-1.06-.05z"
+                fill="currentColor"
+              ></path>
+            </g>
+          </svg>
+          <span>خروج</span>
+        </div>
+      </div>
+
+      <div class="main-content" id="dashboard">
+        <div class="toolbar">
+          <div style="flex: 1">
+            <h1>مدیریت اکانت‌ها</h1>
+            <span class="subtitle" id="statsSubtitle">...</span>
+          </div>
+          <div class="search-box">
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="جستجو..."
+              oninput="filterTable()"
+            />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <rect width="24" height="24" fill="none"></rect>
+              <path
+                fill-rule="evenodd"
+                clip-rule="evenodd"
+                d="M7.25007 2.38782C8.54878 2.0992 10.1243 2 12 2C13.8757 2 15.4512 2.0992 16.7499 2.38782C18.06 2.67897 19.1488 3.176 19.9864 4.01358C20.824 4.85116 21.321 5.94002 21.6122 7.25007C21.9008 8.54878 22 10.1243 22 12C22 13.8757 21.9008 15.4512 21.6122 16.7499C21.321 18.06 20.824 19.1488 19.9864 19.9864C19.1488 20.824 18.06 21.321 16.7499 21.6122C15.4512 21.9008 13.8757 22 12 22C10.1243 22 8.54878 21.9008 7.25007 21.6122C5.94002 21.321 4.85116 20.824 4.01358 19.9864C3.176 19.1488 2.67897 18.06 2.38782 16.7499C2.0992 15.4512 2 13.8757 2 12C2 10.1243 2.0992 8.54878 2.38782 7.25007C2.67897 5.94002 3.176 4.85116 4.01358 4.01358C4.85116 3.176 5.94002 2.67897 7.25007 2.38782ZM9 11.5C9 10.1193 10.1193 9 11.5 9C12.8807 9 14 10.1193 14 11.5C14 12.8807 12.8807 14 11.5 14C10.1193 14 9 12.8807 9 11.5ZM11.5 7C9.01472 7 7 9.01472 7 11.5C7 13.9853 9.01472 16 11.5 16C12.3805 16 13.202 15.7471 13.8957 15.31L15.2929 16.7071C15.6834 17.0976 16.3166 17.0976 16.7071 16.7071C17.0976 16.3166 17.0976 15.6834 16.7071 15.2929L15.31 13.8957C15.7471 13.202 16 12.3805 16 11.5C16 9.01472 13.9853 7 11.5 7Z"
+                fill="#323232"
+              ></path>
+            </svg>
+          </div>
+          <button class="btn" onclick="openModal()">+ افزودن مشتری</button>
+        </div>
+        <div class="table-wrapper">
+          <table id="customerTable">
+            <thead>
+              <tr>
+                <th>مشتری</th>
+                <th>باقی‌مانده (ماه جاری)</th>
+                <th>حجم</th>
+                <th>وضعیت ماهانه</th>
+                <th>کاربر</th>
+                <th>قیمت</th>
+                <th>لینک/کد</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- NEW RENEWAL SECTION -->
+      <div class="main-content hidden" id="renewal">
+        <div class="toolbar">
+          <div>
+            <h1>پیگیری تمدید</h1>
+            <span class="subtitle">اکانت‌های منقضی شده یا رو به اتمام</span>
+          </div>
+          <button class="btn btn-purple" onclick="sendBatchSms()">
+            ارسال پیامک به همه لیست (خودکار)
+          </button>
+        </div>
+        <div class="table-wrapper">
+          <table id="renewalTable">
+            <thead>
+              <tr>
+                <th>مشتری</th>
+                <th>وضعیت</th>
+                <th>لینک/کد</th>
+                <th>ارسال پیام</th>
+                <th>عملیات</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="main-content hidden" id="settings">
+        <div class="toolbar"><h1>تنظیمات</h1></div>
+        <div class="settings-grid">
+          <!-- 1️⃣ SECTION: SMS CONFIGURATION -->
+          <div class="setting-card">
+            <h3>🔧 تنظیمات پیامک</h3>
+            <div class="form-group">
+              <label>API Key</label>
+              <input
+                type="text"
+                id="smsApiKey"
+                class="ltr"
+                placeholder="کلید وب‌سرویس"
+              />
+            </div>
+            <div class="form-group">
+              <label>شماره خط فرستنده</label>
+              <input
+                type="text"
+                id="smsLineNumber"
+                class="ltr"
+                placeholder="مثلا 3000..."
+              />
+              <small class="help-text">
+                شماره خطی که در پنل sms.ir دارید را وارد کنید
+              </small>
+            </div>
+            <button class="btn" onclick="saveSettings()">
+              ✔️ ذخیره تنظیمات
+            </button>
+          </div>
+
+          <!-- 2️⃣ SECTION: PRICING RATES -->
+          <div class="setting-card">
+            <h3>💰 نرخ‌های متغیر</h3>
+            <div class="form-group">
+              <label>هر 10 گیگ اضافه (ریال)</label>
+              <input type="number" id="setVolPrice" />
+            </div>
+            <div class="form-group">
+              <label>هر کاربر اضافه (ریال)</label>
+              <input type="number" id="setUserPrice" />
+            </div>
+            <button class="btn" onclick="saveSettings()">
+              ✔️ ذخیره قیمت‌ها
+            </button>
+          </div>
+
+          <!-- 3️⃣ SECTION: AUTOMATIC MESSAGES -->
+          <div class="setting-card">
+            <h3>📱 پیام‌های اتوماتیک</h3>
+
+            <div class="subsection">
+              <h4>تنظیمات ارسال اتوماتیک</h4>
+              <div class="form-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    id="autoSmsToggle"
+                    onchange="toggleAutoSms()"
+                  />
+                  فعال کردن ارسال اتوماتیک
+                </label>
+                <small class="help-text">
+                  وقتی اشتراک کاربر 7 روز مانده دارد یا منقضی شده، پیامک ارسال
+                  شود
+                </small>
+              </div>
+              <div class="form-group">
+                <label>بازه بررسی (ساعت)</label>
+                <input
+                  type="number"
+                  id="autoSmsInterval"
+                  min="1"
+                  max="24"
+                  value="24"
+                />
+              </div>
+              <div class="form-group">
+                <small class="help-text" id="lastAutoSmsSent">
+                  آخرین ارسال: هنوز ارسال نشده
+                </small>
+              </div>
+              <button class="btn btn-secondary" onclick="testAutoSms()">
+                🧪 تست ارسال
+              </button>
+            </div>
+
+            <div class="subsection">
+              <h4>پیام منقضی شده</h4>
+              <div class="form-group">
+                <textarea
+                  id="msgExpired"
+                  class="ltr message-textarea"
+                  rows="5"
+                  placeholder="پیام برای اشتراک‌های منقضی شده..."
+                ></textarea>
+                <small class="help-text">
+                  متغیرهای دستیار: {CONFIG_CODE} {DATE} {DURATION} {VOLUME}
+                  {NAME}
+                </small>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <h4>پیام انقضای نزدیک (1 روز)</h4>
+              <div class="form-group">
+                <textarea
+                  id="msgExpiringSoon"
+                  class="ltr message-textarea"
+                  rows="5"
+                  placeholder="پیام برای اشتراک‌های در حال انقضا..."
+                ></textarea>
+                <small class="help-text">
+                  متغیرهای دستیار: {CONFIG_CODE} {DATE} {DURATION} {VOLUME}
+                  {NAME}
+                </small>
+              </div>
+            </div>
+
+            <div class="button-group">
+              <button class="btn" onclick="saveCustomMessages()">
+                ✔️ ذخیره پیام‌های پیش‌فرض
+              </button>
+            </div>
+          </div>
+
+          <!-- 4️⃣ SECTION: CUSTOM MESSAGES -->
+          <div class="setting-card">
+            <h3>✏️ ارسال پیام شخصی</h3>
+
+            <div class="subsection">
+              <h4>انتخاب کاربر</h4>
+              <div class="form-group">
+                <input
+                  type="text"
+                  id="selectCustomUser"
+                  placeholder="نام یا شماره کاربر را جستجو کنید..."
+                />
+                <small class="help-text" id="customUserList"></small>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <h4>متن پیام</h4>
+              <div class="form-group">
+                <textarea
+                  id="customMessage"
+                  class="ltr message-textarea"
+                  rows="6"
+                  placeholder="پیام شخصی را اینجا بنویسید..."
+                ></textarea>
+                <small class="help-text">
+                  متغیرهای دستیار: {CONFIG_CODE} {DATE} {DURATION} {VOLUME}
+                  {NAME}
+                </small>
+              </div>
+            </div>
+
+            <div class="button-group">
+              <button class="btn" onclick="sendCustomMessage()">
+                📤 ارسال پیام
+              </button>
+            </div>
+          </div>
+
+          <!-- 5️⃣ SECTION: BACKUP & DATABASE -->
+          <div class="setting-card">
+            <h3>💾 پشتیبان‌گیری و دیتا‌بیس</h3>
+
+            <div class="subsection">
+              <h4>دانلود و بارگذاری بکاپ</h4>
+              <p class="info-box">
+                ℹ️ برای انتقال اطلاعات به موبایل دیگر، فایل بکاپ را دانلود و در
+                آن دستگاه بارگذاری کنید.
+              </p>
+              <div class="button-group">
+                <button class="btn btn-secondary" onclick="exportData()">
+                  📥 دانلود بکاپ
+                </button>
+                <label class="btn btn-secondary" style="cursor: pointer">
+                  📤 بازگردانی
+                  <input
+                    type="file"
+                    id="importFile"
+                    style="display: none"
+                    onchange="importData(this)"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div class="subsection">
+              <h4>مدیریت دیتا‌بیس</h4>
+              <button
+                class="btn btn-warning"
+                onclick="openDatabaseManagement()"
+              >
+                💾 مدیریت دیتا‌بیس
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Database Management Tab -->
+      <div class="main-content hidden" id="database">
+        <div class="toolbar"><h1>💾 مدیریت دیتا‌بیس</h1></div>
+        <div class="settings-grid">
+          <div class="setting-card">
+            <h3>📊 وضعیت دیتا‌بیس</h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+                margin: 15px 0;
+              "
+            >
+              <div
+                style="
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  padding: 15px;
+                  border-radius: 8px;
+                  color: white;
+                  text-align: center;
+                "
+              >
+                <div
+                  id="dbCustomerCount"
+                  style="font-size: 24px; font-weight: bold"
+                >
+                  0
+                </div>
+                <div style="font-size: 12px; margin-top: 5px">مشتریان</div>
+              </div>
+              <div
+                style="
+                  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                  padding: 15px;
+                  border-radius: 8px;
+                  color: white;
+                  text-align: center;
+                "
+              >
+                <div
+                  id="dbStorageSize"
+                  style="font-size: 24px; font-weight: bold"
+                >
+                  0 KB
+                </div>
+                <div style="font-size: 12px; margin-top: 5px">
+                  اندازه استفاده‌شده
+                </div>
+              </div>
+            </div>
+            <button class="btn" onclick="refreshDatabaseStats()">
+              🔄 بروز رسانی
+            </button>
+          </div>
+
+          <div class="setting-card">
+            <h3>📥 ورود/خروج اطلاعات</h3>
+            <p
+              style="
+                font-size: 12px;
+                color: var(--text-sec);
+                margin-bottom: 15px;
+              "
+            >
+              تمام اطلاعات (مشتریان، تنظیمات، تاریخچه پیامک) را صادر یا وارد
+              کنید
+            </p>
+            <div
+              style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px"
+            >
+              <button class="btn btn-secondary" onclick="exportDatabaseData()">
+                📤 صادرات اطلاعات
+              </button>
+              <label
+                class="btn btn-secondary"
+                style="cursor: pointer; text-align: center"
+              >
+                📥 واردات اطلاعات
+                <input
+                  type="file"
+                  id="importDbFile"
+                  style="display: none"
+                  accept=".json"
+                  onchange="importDatabaseData(this)"
+                />
+              </label>
+            </div>
+          </div>
+
+          <div class="setting-card">
+            <h3>⚙️ عملیات پیشرفته</h3>
+            <p
+              style="
+                font-size: 12px;
+                color: var(--text-sec);
+                margin-bottom: 15px;
+              "
+            >
+              توجه: عملیات حذف اطلاعات قابل بازگشت نیست!
+            </p>
+            <button
+              class="btn"
+              style="
+                background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+                width: 100%;
+                margin-bottom: 10px;
+              "
+              onclick="clearDatabaseData()"
+            >
+              🗑️ حذف تمام اطلاعات
+            </button>
+            <small
+              id="dbLastAction"
+              style="color: var(--text-sec); display: block; text-align: center"
+            >
+              آخرین عملیات: ندارد
+            </small>
+          </div>
+
+          <div class="setting-card">
+            <h3>📋 اطلاعات دیتا‌بیس</h3>
+            <div
+              style="font-size: 12px; line-height: 1.8; color: var(--text-sec)"
+            >
+              <div><strong>نام دیتا‌بیس:</strong> servicePanelDB</div>
+              <div><strong>نسخه:</strong> 1</div>
+              <div><strong>جداول:</strong> customers, settings, smsHistory</div>
+              <div
+                style="
+                  margin-top: 10px;
+                  padding-top: 10px;
+                  border-top: 1px solid var(--border-color);
+                "
+              >
+                <strong>مشخصات:</strong>
+                <ul style="margin: 5px 0; padding-right: 15px">
+                  <li>ذخیره‌سازی محلی بدون نیاز به سرور</li>
+                  <li>در دستری از هر دستگاهی که وارد شوید</li>
+                  <li>دادهها در مرورگر رمزگذاری نمی‌شوند</li>
+                  <li>حذف داده مرورگر = حذف دادهها</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Customized Date Conversion Tab -->
+      <div class="main-content hidden" id="dateconv">
+        <div class="toolbar"><h1>تبدیل تاریخ</h1></div>
+        <div
+          class="settings-grid"
+          style="display: flex; justify-content: center"
+        >
+          <div class="setting-card" style="width: 100%; max-width: 500px">
+            <div class="form-group">
+              <label>نوع تبدیل</label>
+              <select id="convType" onchange="updateConvPlaceholders()">
+                <option value="s2m">شمسی به میلادی</option>
+                <option value="m2s">میلادی به شمسی</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>روز</label>
+                <input type="number" id="cDay" placeholder="مثلا 10" />
+              </div>
+              <div class="form-group">
+                <label>ماه</label>
+                <input type="number" id="cMonth" placeholder="مثلا 9" />
+              </div>
+              <div class="form-group">
+                <label>سال</label>
+                <input type="number" id="cYear" placeholder="مثلا 1403" />
+              </div>
+            </div>
+            <button
+              class="btn"
+              style="width: 100%; margin-top: 10px"
+              onclick="performConversion()"
+            >
+              تبدیل کن
+            </button>
+
+            <div id="convResult" class="result-box hidden"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Form -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal">
+        <h2 style="margin-top: 0" id="modalTitle">اکانت جدید</h2>
+        <input type="hidden" id="editIndex" />
+        <div class="form-group">
+          <label>نام مشتری</label>
+          <input type="text" id="inpName" />
+        </div>
+        <div class="form-group">
+          <label>شماره موبایل</label>
+          <input type="text" id="inpMobile" class="ltr" placeholder="0912..." />
+        </div>
+
+        <div class="form-group">
+          <label>کد کانفیگ (Vless/Vmess...)</label>
+          <input
+            type="text"
+            id="inpCode"
+            class="ltr"
+            placeholder="کپی کد کانفیگ اینجا..."
+          />
+        </div>
+        <div class="form-group">
+          <label>لینک اشتراک</label>
+          <input
+            type="text"
+            id="inpSub"
+            class="ltr"
+            placeholder="https://..."
+          />
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>حجم (GB)</label>
+            <input
+              type="number"
+              id="inpVolume"
+              value="25"
+              oninput="calculateSuggestedPrice()"
+            />
+          </div>
+          <div class="form-group">
+            <label>تعداد کاربر</label>
+            <input
+              type="number"
+              id="inpUsers"
+              value="1"
+              oninput="calculateSuggestedPrice()"
+            />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>مدت (ماه)</label>
+            <input
+              type="number"
+              id="inpDuration"
+              value="1"
+              oninput="calculateSuggestedPrice()"
+            />
+          </div>
+          <div class="form-group">
+            <label>تاریخ خرید</label>
+            <input type="text" id="inpDate" placeholder="۱۴۰۳/۰۹/۱۰" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>مبلغ پرداختی (تومان)</label>
+          <input type="text" id="inpPrice" placeholder="مثلا 45000" />
+          <div
+            class="suggest-price"
+            id="priceSuggestion"
+            onclick="useSuggestedPrice()"
+          ></div>
+        </div>
+        <div class="form-group">
+          <label>توضیحات</label>
+          <textarea id="inpDesc" rows="2"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px">
+          <button class="btn btn-secondary" onclick="closeModal()">لغو</button>
+          <button class="btn" onclick="saveCustomer()">ذخیره تغییرات</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="toast-container" id="toastBox"></div>
+
+    <script src="auth.js"></script>
+    <script src="db.js"></script>
+    <script src="sync.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

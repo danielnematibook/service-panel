@@ -1,0 +1,15 @@
+{
+  "name": "مدیریت VPN",
+  "short_name": "VPN Panel",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#e0c3fc",
+  "theme_color": "#e0c3fc",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/2099/2099192.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
