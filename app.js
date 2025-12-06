@@ -274,6 +274,26 @@ let settings =
   JSON.parse(localStorage.getItem("serviceSettings")) || defaultSettings;
 let customers = JSON.parse(localStorage.getItem("serviceCustomers")) || [];
 
+// Global CloudSync instance
+let cloudSync = null;
+
+/**
+ * Initialize CloudSync for real-time multi-device synchronization
+ */
+function initializeCloudSync() {
+  try {
+    // CloudSync will auto-detect the correct server URL
+    cloudSync = new CloudSync();
+    console.log("✅ CloudSync initialized successfully");
+    return cloudSync;
+  } catch (error) {
+    console.error("❌ Failed to initialize CloudSync:", error);
+    cloudSync = null;
+    showToast("⚠️ سینک مرکزی دسترسی ندارد - تنها ذخیره محلی", "warning");
+    return null;
+  }
+}
+
 // --- Database Initialization with Cloud Sync ---
 async function initializeDatabase() {
   try {
@@ -1308,6 +1328,36 @@ async function startApp() {
     if (settings.autoSmsEnabled) {
       startAutoSmsScheduler();
     }
+
+    // 🔄 Listen for real-time sync updates from other devices
+    window.addEventListener("syncUpdate", async (event) => {
+      try {
+        const { customers: updatedCustomers, settings: updatedSettings } =
+          event.detail;
+
+        if (updatedCustomers && Array.isArray(updatedCustomers)) {
+          for (const customer of updatedCustomers) {
+            await vpnDB.addCustomer(customer);
+          }
+          customers = await vpnDB.getAllCustomers();
+          renderTable();
+          renderRenewalTable();
+          updateStats();
+          showToast("📡 آپدیت از دستگاه دیگر دریافت شد", "success");
+        }
+
+        if (updatedSettings && typeof updatedSettings === "object") {
+          for (const [key, value] of Object.entries(updatedSettings)) {
+            await vpnDB.saveSetting(key, value);
+          }
+          const dbSettings = await vpnDB.getAllSettings();
+          settings = { ...defaultSettings, ...dbSettings };
+          console.log("✅ تنظیمات از دستگاه دیگر بروز شد");
+        }
+      } catch (err) {
+        console.error("❌ خطا در بروز رسانی سینک:", err);
+      }
+    });
 
     console.log("✅ برنامه آماده است");
   } catch (err) {

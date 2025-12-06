@@ -4,7 +4,21 @@
  */
 
 class CloudSync {
-  constructor(serverUrl = "http://localhost:5000") {
+  constructor(serverUrl = null) {
+    // Auto-detect server URL based on current location
+    if (!serverUrl) {
+      // If running on localhost, use localhost:5000
+      if (
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+      ) {
+        serverUrl = "http://localhost:5000";
+      } else {
+        // If running on a remote server, use the same server but port 5000
+        serverUrl = `http://${window.location.hostname}:5000`;
+      }
+    }
+
     this.serverUrl = serverUrl;
     this.deviceId = this.generateDeviceId();
     this.lastSyncTime = localStorage.getItem("lastSyncTime") || "2000-01-01";
@@ -13,6 +27,7 @@ class CloudSync {
     this.syncQueue = [];
     this.offline = false;
 
+    console.log(`🔗 CloudSync configured to: ${this.serverUrl}`);
     this.initSync();
   }
 
