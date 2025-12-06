@@ -1,20 +1,20 @@
 /**
- * Central Database Synchronization System
- * Real-time sync with 3-second polling for instant updates across devices
+ * Bidirectional Cloud Sync System
+ * Ensures real-time synchronization across all devices
+ * - Push: Local changes → Central Server
+ * - Pull: Central Server → Local changes
  */
 
-class CloudSync {
+class BidirectionalCloudSync {
   constructor(serverUrl = null) {
-    // Auto-detect server URL based on current location
+    // Auto-detect server URL
     if (!serverUrl) {
-      // If running on localhost, use localhost:5000
       if (
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1"
       ) {
         serverUrl = "http://localhost:5000";
       } else {
-        // If running on a remote server, use the same server but port 5000
         serverUrl = `http://${window.location.hostname}:5000`;
       }
     }
@@ -24,10 +24,10 @@ class CloudSync {
     this.lastSyncTime = localStorage.getItem("lastSyncTime") || "2000-01-01";
     this.syncInterval = 3000; // 3 seconds for real-time sync
     this.isSyncing = false;
-    this.syncQueue = [];
+    this.syncQueue = JSON.parse(localStorage.getItem("syncQueue")) || [];
     this.offline = false;
 
-    console.log(`🔗 CloudSync configured to: ${this.serverUrl}`);
+    console.log(`🔗 BidirectionalCloudSync configured to: ${this.serverUrl}`);
     this.initSync();
   }
 
@@ -118,21 +118,35 @@ class CloudSync {
     }, this.syncInterval);
   }
 
+  /**
+   * Complete bidirectional sync:
+   * 1. PUSH: Send local changes to server
+   * 2. PULL: Fetch updates from server
+   */
   async syncNow() {
     if (this.isSyncing) return;
     this.isSyncing = true;
 
     try {
+      console.log("🔄 Starting bidirectional sync...");
+
+      // Step 1: PUSH - Process local queue (send changes to server)
       if (this.syncQueue.length > 0) {
+        console.log(
+          `📤 PUSH: Sending ${this.syncQueue.length} changes to server...`
+        );
         await this.processSyncQueue();
       }
 
+      // Step 2: PULL - Fetch updates from server
       if (!this.offline) {
+        console.log("📥 PULL: Fetching updates from server...");
         await this.fetchUpdates();
       }
 
       this.lastSyncTime = new Date().toISOString();
       localStorage.setItem("lastSyncTime", this.lastSyncTime);
+      console.log("✅ Sync completed");
     } catch (error) {
       console.error("❌ Sync error:", error);
     } finally {
@@ -140,18 +154,9 @@ class CloudSync {
     }
   }
 
-  queueChange(operation) {
-    this.syncQueue.push({
-      ...operation,
-      queuedAt: new Date().toISOString(),
-      deviceId: this.deviceId,
-    });
-    localStorage.setItem("syncQueue", JSON.stringify(this.syncQueue));
-    if (!this.offline && !this.isSyncing) {
-      this.syncNow();
-    }
-  }
-
+  /**
+   * PUSH: Send queued changes to server
+   */
   async processSyncQueue() {
     while (this.syncQueue.length > 0) {
       const operation = this.syncQueue[0];
@@ -169,7 +174,9 @@ class CloudSync {
         if (success) {
           this.syncQueue.shift();
           localStorage.setItem("syncQueue", JSON.stringify(this.syncQueue));
+          console.log(`✅ Queued operation sent: ${operation.type}`);
         } else {
+          console.warn("⚠️ Operation failed, will retry");
           break;
         }
       } catch (error) {
@@ -179,6 +186,26 @@ class CloudSync {
     }
   }
 
+  /**
+   * Queue a change for later processing (used when offline)
+   */
+  queueChange(operation) {
+    this.syncQueue.push({
+      ...operation,
+      queuedAt: new Date().toISOString(),
+      deviceId: this.deviceId,
+    });
+    localStorage.setItem("syncQueue", JSON.stringify(this.syncQueue));
+    console.log(`⏳ Operation queued (offline): ${operation.type}`);
+
+    if (!this.offline && !this.isSyncing) {
+      this.syncNow();
+    }
+  }
+
+  /**
+   * PUSH: Add customer to server
+   */
   async addCustomer(customer) {
     if (this.offline) {
       this.queueChange({ type: "addCustomer", customer });
@@ -199,6 +226,9 @@ class CloudSync {
     }
   }
 
+  /**
+   * PUSH: Update customer on server
+   */
   async updateCustomer(customer) {
     if (this.offline) {
       this.queueChange({ type: "updateCustomer", customer });
@@ -219,6 +249,9 @@ class CloudSync {
     }
   }
 
+  /**
+   * PUSH: Delete customer from server
+   */
   async deleteCustomer(code) {
     if (this.offline) {
       this.queueChange({ type: "deleteCustomer", code });
@@ -239,6 +272,9 @@ class CloudSync {
     }
   }
 
+  /**
+   * PUSH: Save setting on server
+   */
   async saveSetting(key, value) {
     if (this.offline) {
       this.queueChange({ type: "saveSetting", key, value });
@@ -248,7 +284,11 @@ class CloudSync {
       const response = await fetch(`${this.serverUrl}/api/settings/save`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ key, value, device_id: this.deviceId }),
+        body: JSON.stringify({
+          key,
+          value,
+          device_id: this.deviceId,
+        }),
       });
       const data = await response.json();
       return data.success;
@@ -259,6 +299,10 @@ class CloudSync {
     }
   }
 
+  /**
+   * PULL: Fetch updates from server
+   * Get all changes since last sync and apply to local device
+   */
   async fetchUpdates() {
     try {
       const response = await fetch(`${this.serverUrl}/api/sync`, {
@@ -271,13 +315,14 @@ class CloudSync {
       });
       const data = await response.json();
       if (data.success) {
+        // Dispatch event with all updates
         if (data.customers && data.customers.length > 0) {
           console.log(
             `📥 Received ${data.customers.length} customers from server`
           );
           window.dispatchEvent(
             new CustomEvent("syncUpdate", {
-              detail: { customers: data.customers },
+              detail: { customers: data.customers, source: "server" },
             })
           );
         }
@@ -285,7 +330,7 @@ class CloudSync {
           console.log("📥 Received settings from server");
           window.dispatchEvent(
             new CustomEvent("syncUpdate", {
-              detail: { settings: data.settings },
+              detail: { settings: data.settings, source: "server" },
             })
           );
         }
@@ -297,6 +342,9 @@ class CloudSync {
     return false;
   }
 
+  /**
+   * Log SMS to server
+   */
   async logSms(mobile, message, status = "pending", response = "") {
     if (this.offline) return false;
     try {

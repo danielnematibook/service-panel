@@ -980,7 +980,7 @@ function deleteCustomer(idx) {
       });
     }
 
-    // Sync deletion with central database
+    // 🔄 Sync deletion immediately with all devices
     if (cloudSync && customerToDelete.code) {
       cloudSync.deleteCustomer(customerToDelete.code).catch((err) => {
         console.warn("⚠️ خطا در ارسال حذف به سرور:", err);
@@ -990,7 +990,7 @@ function deleteCustomer(idx) {
     customers.splice(idx, 1);
     saveData();
     filterTable();
-    showToast("حذف شد", "success");
+    showToast("✅ حذف و سینک شد", "success");
   }
 }
 
@@ -1086,7 +1086,7 @@ function saveCustomer() {
     name,
     mobile: document.getElementById("inpMobile").value,
     code: document.getElementById("inpCode").value,
-    configCode: document.getElementById("inpCode").value, // اضافه کردن configCode
+    configCode: document.getElementById("inpCode").value,
     subLink: document.getElementById("inpSub").value,
     volume: parseInt(document.getElementById("inpVolume").value) || 0,
     users: parseInt(document.getElementById("inpUsers").value) || 1,
@@ -1095,17 +1095,36 @@ function saveCustomer() {
     desc: document.getElementById("inpDesc").value,
     price: document.getElementById("inpPrice").value,
     monthsPassed: [],
+    updatedAt: new Date().toISOString(),
   };
 
+  let isNew = false;
   if (index >= 0) {
-    // افزودن ID برای بروز رسانی
+    // Update existing customer
     customerData.id = customers[index].id;
     customers[index] = customerData;
-    showToast("تغییرات ذخیره شد", "success");
+
+    // 🔄 Sync update immediately to server and all devices
+    if (cloudSync) {
+      cloudSync.updateCustomer(customerData).catch((err) => {
+        console.warn("⚠️ خطا در ارسال آپدیت:", err);
+      });
+    }
+    showToast("✅ تغییرات ذخیره و سینک شدند", "success");
   } else {
+    // Add new customer
+    isNew = true;
     customers.push(customerData);
-    showToast("مشتری جدید اضافه شد", "success");
+
+    // 🔄 Sync new customer immediately to server and all devices
+    if (cloudSync) {
+      cloudSync.addCustomer(customerData).catch((err) => {
+        console.warn("⚠️ خطا در ارسال:", err);
+      });
+    }
+    showToast("✅ مشتری جدید اضافه و سینک شد", "success");
   }
+
   saveData();
   closeModal();
   filterTable();
@@ -1116,17 +1135,24 @@ function saveSettings() {
     document.getElementById("setVolPrice").value
   );
   settings.extraUserPrice = parseInt(document.getElementById("inpUsers").value);
-  // Save SMS Settings
   settings.smsApiKey = document.getElementById("smsApiKey").value;
   settings.smsLineNumber = document.getElementById("smsLineNumber").value;
-
-  // Save Auto-SMS Settings
   settings.autoSmsEnabled = document.getElementById("autoSmsToggle").checked;
   settings.autoSmsInterval =
     parseInt(document.getElementById("autoSmsInterval").value) || 24;
 
   saveData();
-  showToast("تنظیمات ذخیره شد", "success");
+  
+  // 🔄 Sync settings immediately to all devices
+  if (cloudSync) {
+    Object.entries(settings).forEach(([key, value]) => {
+      cloudSync.saveSetting(key, value).catch((err) => {
+        console.warn(`⚠️ خطا در ارسال تنظیم ${key}:`, err);
+      });
+    });
+  }
+  
+  showToast("✅ تنظیمات ذخیره و سینک شدند", "success");
 }
 
 function toggleAutoSms() {
