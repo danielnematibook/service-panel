@@ -1142,7 +1142,7 @@ function saveSettings() {
     parseInt(document.getElementById("autoSmsInterval").value) || 24;
 
   saveData();
-  
+
   // 🔄 Sync settings immediately to all devices
   if (cloudSync) {
     Object.entries(settings).forEach(([key, value]) => {
@@ -1151,7 +1151,7 @@ function saveSettings() {
       });
     });
   }
-  
+
   showToast("✅ تنظیمات ذخیره و سینک شدند", "success");
 }
 
