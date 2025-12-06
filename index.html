@@ -800,37 +800,64 @@
 
     <!-- Cache Buster & Service Worker Update -->
     <script>
-      // Register service worker with cache busting
-      if ('serviceWorker' in navigator) {
-        // Clear old caches on page load
-        caches.keys().then(cacheNames => {
-          cacheNames.forEach(cacheName => {
-            if (cacheName.startsWith('service-panel-') && cacheName !== 'service-panel-v2') {
-              console.log('🗑️ Clearing old cache:', cacheName);
-              caches.delete(cacheName);
+      // Aggressive cache clearing for PWA updates
+      (async function clearOldCaches() {
+        try {
+          const cacheNames = await caches.keys();
+          console.log("📦 Found caches:", cacheNames);
+          
+          for (const cacheName of cacheNames) {
+            if (cacheName.startsWith("service-panel-")) {
+              // Keep only v3, delete all others
+              if (cacheName !== "service-panel-v3") {
+                console.log(`🗑️ Deleting cache: ${cacheName}`);
+                await caches.delete(cacheName);
+              }
             }
-          });
-        });
+          }
+          console.log("✅ Old caches cleared");
+        } catch (err) {
+          console.error("❌ Cache clearing error:", err);
+        }
+      })();
 
-        // Register/update service worker
-        navigator.serviceWorker.register('sw.js?v=2', { scope: './' })
-          .then(reg => {
-            console.log('✅ Service Worker registered (v2)');
-            // Check for updates
+      // Register service worker
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker
+          .register("sw.js?v=3", { scope: "./" })
+          .then((reg) => {
+            console.log("✅ Service Worker registered (v3)");
+            
+            // Force update check
+            reg.update();
+            
+            // Check for updates periodically
+            setInterval(() => {
+              console.log("🔄 Checking for SW updates...");
+              reg.update();
+            }, 60000); // Every 60 seconds
+            
+            // Listen for new worker
             reg.onupdatefound = () => {
               const newWorker = reg.installing;
               newWorker.onstatechange = () => {
-                if (newWorker.state === 'activated') {
-                  console.log('🔄 Service Worker updated');
-                  // Optionally show a notification to user
-                  if (window.showToast) {
-                    showToast('✅ برنامه به‌روز شد', 'success');
+                if (newWorker.state === "activated") {
+                  console.log("🎉 Service Worker updated to v3!");
+                  if (typeof showToast === "function") {
+                    showToast("✅ برنامه به‌روز شد - صفحه را refresh کنید", "success");
                   }
                 }
               };
             };
           })
-          .catch(err => console.error('❌ Service Worker registration failed:', err));
+          .catch((err) =>
+            console.error("❌ Service Worker registration failed:", err)
+          );
+
+        // Handle controller change (when new SW takes over)
+        navigator.serviceWorker.oncontrollerchange = () => {
+          console.log("📡 New Service Worker activated!");
+        };
       }
     </script>
   </body>
