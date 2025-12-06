@@ -1,15 +1,22 @@
 {
-  "name": "مدیریت VPN",
-  "short_name": "VPN Panel",
+  "name": "مدیریت اشتراک ",
+  "short_name": "Subscribe Panel",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#e0c3fc",
   "theme_color": "#e0c3fc",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/2099/2099192.png",
-      "sizes": "512x512",
-      "type": "image/png"
+      "src": "logo/logo.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "logo/logo.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
