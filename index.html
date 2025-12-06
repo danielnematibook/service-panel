@@ -9,10 +9,7 @@
     <meta name="theme-color" content="#e0c3fc" />
     <title>مدیریت اشتراک + SMS</title>
     <link rel="manifest" href="manifest.json" />
-    <link
-      rel="apple-touch-icon"
-      href="logo/logo.png"
-    />
+    <link rel="apple-touch-icon" href="logo/logo.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -800,5 +797,41 @@
     <script src="db.js"></script>
     <script src="sync.js"></script>
     <script src="app.js"></script>
+
+    <!-- Cache Buster & Service Worker Update -->
+    <script>
+      // Register service worker with cache busting
+      if ('serviceWorker' in navigator) {
+        // Clear old caches on page load
+        caches.keys().then(cacheNames => {
+          cacheNames.forEach(cacheName => {
+            if (cacheName.startsWith('service-panel-') && cacheName !== 'service-panel-v2') {
+              console.log('🗑️ Clearing old cache:', cacheName);
+              caches.delete(cacheName);
+            }
+          });
+        });
+
+        // Register/update service worker
+        navigator.serviceWorker.register('sw.js?v=2', { scope: './' })
+          .then(reg => {
+            console.log('✅ Service Worker registered (v2)');
+            // Check for updates
+            reg.onupdatefound = () => {
+              const newWorker = reg.installing;
+              newWorker.onstatechange = () => {
+                if (newWorker.state === 'activated') {
+                  console.log('🔄 Service Worker updated');
+                  // Optionally show a notification to user
+                  if (window.showToast) {
+                    showToast('✅ برنامه به‌روز شد', 'success');
+                  }
+                }
+              };
+            };
+          })
+          .catch(err => console.error('❌ Service Worker registration failed:', err));
+      }
+    </script>
   </body>
 </html>
