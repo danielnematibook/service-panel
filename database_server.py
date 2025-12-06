@@ -33,6 +33,28 @@ active_sessions = {}
 sessions_lock = threading.Lock()
 
 
+class HybridHandler(http.server.SimpleHTTPRequestHandler):
+    """This handler uses SimpleHTTPRequestHandler to serve static files
+    and forwards API requests to APIHandler."""
+    def do_GET(self):
+        if self.path.startswith('/api'):
+            APIHandler(self.request, self.client_address, self.server)
+        else:
+            super().do_GET()
+
+    def do_POST(self):
+        if self.path.startswith('/api'):
+            APIHandler(self.request, self.client_address, self.server)
+        else:
+            self.send_error(HTTPStatus.NOT_FOUND, "Only API endpoints support POST.")
+
+    def do_OPTIONS(self):
+        if self.path.startswith('/api'):
+            APIHandler(self.request, self.client_address, self.server)
+        else:
+            super().do_OPTIONS()
+
+
 class DatabaseManager:
     """SQLite Database Manager"""
 
@@ -163,68 +185,71 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
             path = parsed_path.path
             query_params = parse_qs(parsed_path.query)
 
-            # Enable CORS
-            self.send_response(HTTPStatus.OK)
-            self.send_header("Content-type", "application/json")
-            self.send_header("Access-Control-Allow-Origin", "*")
-            self.end_headers()
+            # API routes
+            if path.startswith("/api/"):
+                self.send_response(HTTPStatus.OK)
+                self.send_header("Content-type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
 
-            # Routes
-            if path == "/api/customers":
-                customers = self.db.execute("SELECT * FROM customers")
-                self.wfile.write(
-                    json.dumps(
-                        {
-                            "success": True,
-                            "data": [dict(c) for c in customers] if customers else [],
-                        }
-                    ).encode()
-                )
+                if path == "/api/customers":
+                    customers = self.db.execute("SELECT * FROM customers")
+                    self.wfile.write(
+                        json.dumps(
+                            {
+                                "success": True,
+                                "data": [dict(c) for c in customers] if customers else [],
+                            }
+                        ).encode()
+                    )
 
-            elif path == "/api/settings":
-                settings = self.db.execute("SELECT key, value FROM settings")
-                result = {}
-                if settings:
-                    for row in settings:
-                        result[row["key"]] = json.loads(row["value"])
-                self.wfile.write(
-                    json.dumps({"success": True, "data": result}).encode()
-                )
+                elif path == "/api/settings":
+                    settings = self.db.execute("SELECT key, value FROM settings")
+                    result = {}
+                    if settings:
+                        for row in settings:
+                            result[row["key"]] = json.loads(row["value"])
+                    self.wfile.write(
+                        json.dumps({"success": True, "data": result}).encode()
+                    )
 
-            elif path == "/api/sms-history":
-                limit = query_params.get("limit", ["100"])[0]
-                sms_history = self.db.execute(
-                    f"SELECT * FROM sms_history ORDER BY sent_at DESC LIMIT {limit}"
-                )
-                self.wfile.write(
-                    json.dumps(
-                        {
-                            "success": True,
-                            "data": [dict(s) for s in sms_history] if sms_history else [],
-                        }
-                    ).encode()
-                )
+                elif path == "/api/sms-history":
+                    limit = query_params.get("limit", ["100"])[0]
+                    sms_history = self.db.execute(
+                        f"SELECT * FROM sms_history ORDER BY sent_at DESC LIMIT {limit}"
+                    )
+                    self.wfile.write(
+                        json.dumps(
+                            {
+                                "success": True,
+                                "data": [dict(s) for s in sms_history] if sms_history else [],
+                            }
+                        ).encode()
+                    )
 
-            elif path == "/api/device-sessions":
-                sessions = self.db.execute("SELECT * FROM device_sessions")
-                self.wfile.write(
-                    json.dumps(
-                        {
-                            "success": True,
-                            "data": [dict(s) for s in sessions] if sessions else [],
-                        }
-                    ).encode()
-                )
+                elif path == "/api/device-sessions":
+                    sessions = self.db.execute("SELECT * FROM device_sessions")
+                    self.wfile.write(
+                        json.dumps(
+                            {
+                                "success": True,
+                                "data": [dict(s) for s in sessions] if sessions else [],
+                            }
+                        ).encode()
+                    )
 
-            elif path == "/api/health":
-                self.wfile.write(
-                    json.dumps(
-                        {"success": True, "status": "Database server online"}
-                    ).encode()
-                )
-
+                elif path == "/api/health":
+                    self.wfile.write(
+                        json.dumps(
+                            {"success": True, "status": "Database server online"}
+                        ).encode()
+                    )
+                
+                else:
+                    self.send_error(HTTPStatus.NOT_FOUND, "API endpoint not found")
             else:
-                self.send_error(HTTPStatus.NOT_FOUND)
+                # Serve static files
+                return http.server.SimpleHTTPRequestHandler.do_GET(self)
 
         except Exception as e:
             print(f"❌ GET Error: {e}")
@@ -240,7 +265,11 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
             parsed_path = urlparse(self.path)
             path = parsed_path.path
 
-            # Enable CORS
+            if not path.startswith("/api/"):
+                self.send_error(HTTPStatus.NOT_FOUND, "Endpoint not found")
+                return
+
+            # Enable CORS for API responses
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-type", "application/json")
             self.send_header("Access-Control-Allow-Origin", "*")
@@ -425,6 +454,9 @@ class APIHandler(http.server.BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         """Custom logging"""
+        # Suppress default logging for static files to reduce noise
+        if not self.path.startswith("/api"):
+            return
         print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {format % args if args else format}")
 
 
@@ -463,10 +495,11 @@ def run_server():
 
     # Create server
     try:
+        # Use APIHandler which now also serves static files
         httpd = http.server.HTTPServer(("0.0.0.0", PORT), APIHandler)
         print(f"""
 ╔════════════════════════════════════════════════════════════╗
-║         🗄️  Central Database Server Started               ║
+║         🚀  Hybrid Server Started (API + Static)          ║
 ║                                                            ║
 ║  Server: http://localhost:{PORT}                           ║
 ║  Database: {DB_FILE}                              

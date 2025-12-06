@@ -15,7 +15,8 @@ class BidirectionalCloudSync {
       ) {
         serverUrl = "http://localhost:5000";
       } else {
-        serverUrl = `http://${window.location.hostname}:5000`;
+        // For production, use the same host with HTTPS
+        serverUrl = `https://${window.location.hostname}`;
       }
     }
 
