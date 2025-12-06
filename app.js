@@ -565,6 +565,14 @@ function saveData() {
   updateStats();
   renderRenewalTable();
 
+  // 🔄 INSTANT SYNC: Trigger immediate sync to all devices
+  if (cloudSync && !cloudSync.offline) {
+    console.log("⚡ Triggering instant sync to all devices...");
+    cloudSync.syncNow().catch((err) => {
+      console.warn("⚠️ Instant sync failed:", err);
+    });
+  }
+
   // دوباره شماتیک را شروع کن اگر فعال باشد
   if (settings.autoSmsEnabled) {
     if (autoSmsTimer) clearInterval(autoSmsTimer);
@@ -1257,6 +1265,36 @@ async function startApp() {
 
     document.getElementById("modalOverlay").addEventListener("click", (e) => {
       if (e.target.id === "modalOverlay") closeModal();
+    });
+
+    // 🔄 LISTEN FOR REAL-TIME SYNC UPDATES FROM OTHER DEVICES
+    window.addEventListener("syncUpdate", async (event) => {
+      const { customers: updatedCustomers, settings: updatedSettings } =
+        event.detail;
+
+      if (updatedCustomers && updatedCustomers.length > 0) {
+        console.log(
+          "⚡ Syncing customers from other device:",
+          updatedCustomers
+        );
+        for (const customer of updatedCustomers) {
+          await vpnDB.addCustomer(customer);
+        }
+        customers = await vpnDB.getAllCustomers();
+        renderTable();
+        renderRenewalTable();
+        updateStats();
+        showToast("📡 آپدیت از دستگاه دیگر دریافت شد", "success");
+      }
+
+      if (updatedSettings && Object.keys(updatedSettings).length > 0) {
+        console.log("⚡ Syncing settings from other device:", updatedSettings);
+        for (const [key, value] of Object.entries(updatedSettings)) {
+          await vpnDB.saveSetting(key, value);
+        }
+        settings = await vpnDB.getAllSettings();
+        showToast("⚙️ تنظیمات از دستگاه دیگر بروز شد", "success");
+      }
     });
 
     renderTable();
